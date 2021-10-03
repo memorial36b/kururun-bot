@@ -12,10 +12,10 @@ RESPONSES = YAML.load_file('responses.yml')
 # Load config from file and initialize client
 loaded_config = YAML.load_file('config.yml')
 client = Twitter::REST::Client.new do |config|
-  config.consumer_key        = loaded_config[:consumer_key]
-  config.consumer_secret     = loaded_config[:consumer_secret]
-  config.access_token        = loaded_config[:access_token]
-  config.access_token_secret = loaded_config[:access_token_secret]
+  config.consumer_key        = loaded_config['consumer_key']
+  config.consumer_secret     = loaded_config['consumer_secret']
+  config.access_token        = loaded_config['access_token']
+  config.access_token_secret = loaded_config['access_token_secret']
 end
 
 # Variable that tracks the last uploaded image/GIF so there are no repeats

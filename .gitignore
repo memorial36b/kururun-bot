@@ -1,8 +1,5 @@
 # Ignore config
 config.yml
 
-# Ignore database
-db/data.db
-
 # Ignore media/ folder to avoid increasing repository size
 media/*

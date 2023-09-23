@@ -1,22 +1,39 @@
 require 'bundler/setup'
-require_relative 'db/database_init'
 require 'rufus-scheduler'
 scheduler = Rufus::Scheduler.new
 ENV['TZ'] = 'GMT'
 require 'twitter'
 require 'yaml'
+require 'json'
+require 'x'
 
-# Possible responses to reply with when user replies to or mentions bot
-RESPONSES = YAML.load_file('responses.yml')
+# Method to use the v1.1 endpoint to upload media without posting it (uses twitter gem's private utility method)
+module Twitter
+  module REST
+    module API
+      include Twitter::REST::UploadUtils
 
-# Load config from file and initialize client
+      def upload_without_post(media)
+        upload(media)
+      end
+    end
+  end
+end
+
+# Load config from file and initialize clients
 loaded_config = YAML.load_file('config.yml')
-client = Twitter::REST::Client.new do |config|
+v1_client = Twitter::REST::Client.new do |config|
   config.consumer_key        = loaded_config['consumer_key']
   config.consumer_secret     = loaded_config['consumer_secret']
   config.access_token        = loaded_config['access_token']
   config.access_token_secret = loaded_config['access_token_secret']
 end
+v2_client = X::Client.new(
+  api_key:             loaded_config['consumer_key'],
+  api_key_secret:      loaded_config['consumer_secret'],
+  access_token:        loaded_config['access_token'],
+  access_token_secret: loaded_config['access_token_secret']
+)
 
 # Variable that tracks the last uploaded image/GIF so there are no repeats
 last_uploaded = ''
@@ -37,22 +54,13 @@ scheduler.cron '0 * * * *' do
   end
 
   if filepath
-    client.update_with_media('', File.open(filepath))
+    media = v1_client.upload_without_post(filepath)
+    body = {
+      text: '',
+      media: {media_ids: [media[:media_id_string]]}
+    }.to_json
+    v2_client.post('tweets', body)
     last_uploaded = File.basename(filepath)
-  end
-end
-
-# Check for new mentions every 30 seconds, reply to them, and add tweet id to
-# the database to ensure replies only occur once
-scheduler.every '30s' do
-  if ReplyLog.last
-    opts = {since_id: ReplyLog.last[:tweet_id]}
-  else
-    opts = {}
-  end
-  client.mentions(opts).each do |to_reply|
-    client.update("@#{to_reply.user.screen_name} #{RESPONSES.sample}", in_reply_to_status: to_reply)
-    ReplyLog.create(tweet_id: to_reply.id)
   end
 end
 

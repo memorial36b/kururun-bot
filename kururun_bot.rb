@@ -54,7 +54,7 @@ scheduler.cron '0 * * * *' do
   end
 
   if filepath
-    media = v1_client.upload_without_post(filepath)
+    media = v1_client.upload_without_post(File.new(filepath))
     body = {
       text: '',
       media: {media_ids: [media[:media_id_string]]}
